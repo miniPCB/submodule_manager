@@ -13,17 +13,6 @@ CONFIG_FILE = "submodules.json"
 GITHUB_CONFIG_FILE = "config.json"
 SUBMODULE_DIRECTORY = "submodules"
 
-def display_welcome():
-    """Display a welcome message and menu options."""
-    clear_screen()
-    print("==========================")
-    print("  Submodule Manager Tool  ")
-    print("==========================")
-    print("1. Scan, select, install and remove submodules")
-    print("2. Update installed submodules")
-    print("3. Exit")
-    return input("Enter your choice: ").strip()
-
 def fetch_github_repositories():
     """Fetch GitHub repositories of the authenticated user."""
     try:
