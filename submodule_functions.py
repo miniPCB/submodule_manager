@@ -22,14 +22,14 @@ def get_existing_submodules():
 def scan_existing_submodule_paths():
     """Scan the submodule directory for existing submodule paths."""
     submodule_paths = []
-    submodule_dir = os.path.join('.', SUBMODULE_DIRECTORY)
+    submodule_dir = os.path.normpath(SUBMODULE_DIRECTORY)
     if os.path.exists(submodule_dir):
         for folder in os.listdir(submodule_dir):
             full_path = os.path.join(submodule_dir, folder)
             if os.path.isdir(full_path):
                 git_folder = os.path.join(full_path, ".git")
                 if os.path.exists(git_folder):
-                    submodule_paths.append(folder)
+                    submodule_paths.append(full_path)
     return submodule_paths
 
 def add_or_update_submodule(path, url, branch="main"):

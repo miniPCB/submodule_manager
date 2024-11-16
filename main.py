@@ -1,15 +1,12 @@
 import os
-import json
 import subprocess
 import requests
 import shutil
+import json
 
 from display import display_welcome, clear_screen
-from config_scripts import load_config, save_config
 from submodule_functions import scan_existing_submodule_paths, remove_submodule, sync_submodules
 
-# Path to your JSON configuration file
-CONFIG_FILE = "submodules.json"
 GITHUB_CONFIG_FILE = "config.json"
 SUBMODULE_DIRECTORY = "submodules"
 
@@ -64,16 +61,15 @@ def scan_and_update_submodules():
     for repo in existing_repos:
         print(f"  - {repo}")
 
-    config = load_config(CONFIG_FILE)
-    toggle_repo_selection(repos, config)
+    toggle_repo_selection(repos, existing_repos)
 
-def toggle_repo_selection(repos, config):
+def toggle_repo_selection(repos, existing_repos):
     """Display and allow toggling of repository selection."""
-    selected_repos = config.get("submodules", [])
-    selected_paths = {repo["path"] for repo in selected_repos}
-    existing_repos = scan_existing_submodule_paths()
-
-    repo_status = {repo['name']: (repo['name'] in existing_repos) for repo in repos}
+    existing_repos_set = {os.path.basename(repo) for repo in existing_repos}  # Compare by directory name
+    repo_status = {
+        repo['name']: (repo['name'] in existing_repos_set)
+        for repo in repos
+    }
 
     while True:
         print("\nAvailable Repositories:")
@@ -88,18 +84,26 @@ def toggle_repo_selection(repos, config):
 
         if choice.lower() == 'update':
             print("Updating repositories based on selection...")
-            updated_submodules = []
-            for repo in repos:
-                if repo_status[repo['name']]:
-                    updated_submodules.append({
-                        "path": os.path.join(SUBMODULE_DIRECTORY, repo['name']),
-                        "url": repo['clone_url'],
-                        "branch": "main"  # Assuming 'main' as the default branch
-                    })
+            os.makedirs(SUBMODULE_DIRECTORY, exist_ok=True)
 
-            config["submodules"] = updated_submodules
-            save_config(CONFIG_FILE, config)
-            sync_submodules(config)
+            for repo in repos:
+                repo_path = os.path.normpath(os.path.join(SUBMODULE_DIRECTORY, repo['name']))
+                if repo_status[repo['name']]:
+                    try:
+                        if not os.path.exists(repo_path):
+                            print(f"Adding submodule: {repo['name']}")
+                            subprocess.run(["git", "submodule", "add", "-b", "main", repo['clone_url'], repo_path], check=True)
+                        else:
+                            print(f"Submodule {repo['name']} already exists. Initializing...")
+                            subprocess.run(["git", "submodule", "update", "--init", "--remote", repo_path], check=True)
+                    except subprocess.CalledProcessError as e:
+                        print(f"Failed to add or initialize submodule '{repo['name']}': {e.stderr or str(e)}")
+                else:
+                    try:
+                        remove_submodule(repo_path)
+                    except Exception as e:
+                        print(f"Failed to remove submodule '{repo['name']}': {str(e)}")
+
             sync_existing_submodules()
             print("Update completed!")
             break
@@ -115,10 +119,21 @@ def toggle_repo_selection(repos, config):
             print("Invalid input. Enter a number, 'update', or 'done'.")
 
 def sync_existing_submodules():
-    """Update all existing submodules."""
+    """Update all existing submodules and remove untracked ones."""
     print("Syncing all existing submodules...")
     try:
-        subprocess.run(["git", "submodule", "update", "--init", "--remote"], check=True)
+        existing_submodules = scan_existing_submodule_paths()
+
+        for submodule_path in existing_submodules:
+            print(f"Updating submodule: {submodule_path}")
+            try:
+                subprocess.run(
+                    ["git", "submodule", "update", "--init", "--remote", submodule_path],
+                    check=True
+                )
+            except subprocess.CalledProcessError as e:
+                print(f"Failed to update submodule '{submodule_path}': {e.stderr or str(e)}")
+
         print("All submodules are up to date.")
     except subprocess.CalledProcessError as e:
         print(f"Failed to sync submodules: {e.stderr or str(e)}")
