@@ -1,7 +1,3 @@
-[submodule "submodules/test_images"]
-	path = submodules/test_images
-	url = https://github.com/miniPCB/test_images.git
-	branch = main
 [submodule "submodules/test_reports"]
 	path = submodules/test_reports
 	url = https://github.com/miniPCB/test_reports.git
