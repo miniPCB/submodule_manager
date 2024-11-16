@@ -1,3 +1,9 @@
 {
-    "submodules": []
+    "submodules": [
+        {
+            "path": "submodules\\02B-01",
+            "url": "https://github.com/miniPCB/02B-01.git",
+            "branch": "main"
+        }
+    ]
 }
