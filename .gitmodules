@@ -1,0 +1,4 @@
+[submodule "submodules/test_scripts"]
+	path = submodules/test_scripts
+	url = https://github.com/miniPCB/test_scripts.git
+	branch = main
