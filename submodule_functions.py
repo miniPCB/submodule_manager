@@ -47,116 +47,47 @@ def add_or_update_submodule(path, url, branch="main"):
         except subprocess.CalledProcessError as e:
             print(f"Failed to update submodule '{path}': {e.stderr or str(e)}")
 
-def remove_readonly(func, path, exc_info):
-    """Handle readonly files during shutil.rmtree."""
-    os.chmod(path, stat.S_IWRITE)
-    func(path)
-
 def remove_submodule(path):
     """Remove a submodule and update .gitmodules."""
     print(f"Attempting to remove submodule: {path}")
     try:
+        # Normalize the path for consistent handling
+        normalized_path = os.path.normpath(path)
+        git_section_path = normalized_path.replace(os.sep, "/")  # Git uses forward slashes in config
+
         # Deinitialize the submodule
-        subprocess.run(["git", "submodule", "deinit", "-f", path], check=True)
-        # Remove the submodule from the .gitmodules file
-        subprocess.run(["git", "rm", "-f", path], check=True)
-        # Ensure the .gitmodules file is updated
+        subprocess.run(["git", "submodule", "deinit", "-f", normalized_path], check=True)
+
+        # Remove the submodule from the working tree and index
+        subprocess.run(["git", "rm", "-f", normalized_path], check=True)
+
+        # Stage changes to .gitmodules and commit
         subprocess.run(["git", "add", ".gitmodules"], check=True)
-        subprocess.run(["git", "commit", "-m", f"Removed submodule {path}"], check=False)
+        subprocess.run(["git", "commit", "-m", f"Removed submodule {normalized_path}"], check=False)
+
         # Remove the metadata from .git/config
-        subprocess.run(["git", "config", "--remove-section", f"submodule.{path}"], check=False)
-        # Clean up leftover paths
-        git_modules_path = os.path.join(".git", "modules", os.path.normpath(path))
+        subprocess.run(["git", "config", "--remove-section", f"submodule.{git_section_path}"], check=False)
+
+        # Clean up leftover paths in .git/modules
+        git_modules_path = os.path.join(".git", "modules", normalized_path)
         if os.path.exists(git_modules_path):
-            shutil.rmtree(git_modules_path, ignore_errors=True)
-        if os.path.exists(path):
-            shutil.rmtree(path, ignore_errors=True)
-        print(f"Successfully removed submodule: {path}")
+            print(f"Removing leftover metadata at {git_modules_path}")
+            shutil.rmtree(git_modules_path, onerror=handle_remove_readonly)
+
+        # Clean up the working directory path
+        if os.path.exists(normalized_path):
+            print(f"Removing submodule directory at {normalized_path}")
+            shutil.rmtree(normalized_path, onerror=handle_remove_readonly)
+
+        print(f"Successfully removed submodule: {normalized_path}")
     except Exception as e:
         print(f"Failed to remove submodule '{path}': {e}")
 
-def remove_submodule_a(path):
-    """Remove a submodule and update .gitmodules."""
-    print(f"Attempting to remove submodule: {path}")
-    try:
-        # Deinitialize the submodule
-        subprocess.run(["git", "submodule", "deinit", "-f", path], check=True)
-        # Remove the submodule from the .gitmodules file
-        subprocess.run(["git", "rm", "-f", path], check=True)
-        # Remove the metadata from .git/config
-        subprocess.run(["git", "config", "--remove-section", f"submodule.{path}"], check=False)
-        # Clean up leftover paths
-        git_modules_path = os.path.join(".git", "modules", path)
-        if os.path.exists(git_modules_path):
-            shutil.rmtree(git_modules_path, ignore_errors=True)
-        print(f"Successfully removed submodule: {path}")
-    except Exception as e:
-        print(f"Failed to remove submodule '{path}': {e}")
-
-def remove_submodule_b(path):
-    """Remove a submodule and update .gitmodules."""
-    print(f"Attempting to remove submodule: {path}")
-    try:
-        # Deinitialize the submodule
-        subprocess.run(["git", "submodule", "deinit", "-f", path], check=True)
-        # Remove the submodule from the repository
-        subprocess.run(["git", "rm", "-rf", path], check=True)
-        # Remove the metadata from .git/config
-        subprocess.run(["git", "config", "--remove-section", f"submodule.{path}"], check=False)
-        # Clean up leftover paths
-        git_modules_path = os.path.join(".git", "modules", os.path.normpath(path))
-        if os.path.exists(git_modules_path):
-            shutil.rmtree(git_modules_path, ignore_errors=True)
-        if os.path.exists(path):
-            shutil.rmtree(path, ignore_errors=True)
-        print(f"Successfully removed submodule: {path}")
-    except Exception as e:
-        print(f"Failed to remove submodule '{path}': {e}")
-
-def remove_submodule_c(path):
-    """Remove a submodule and update .gitmodules."""
-    print(f"Attempting to remove submodule: {path}")
-    try:
-        # Deinitialize the submodule
-        subprocess.run(["git", "submodule", "deinit", "-f", path], check=True)
-        # Remove the submodule from the repository
-        subprocess.run(["git", "rm", "-f", path], check=True)
-        # Remove the metadata from .git/config
-        subprocess.run(["git", "config", "--remove-section", f"submodule.{path}"], check=False)
-        # Clean up leftover paths
-        git_modules_path = os.path.join(".git", "modules", path)
-        if os.path.exists(git_modules_path):
-            shutil.rmtree(git_modules_path, ignore_errors=True)
-        print(f"Successfully removed submodule: {path}")
-    except Exception as e:
-        print(f"Failed to remove submodule '{path}': {e}")
-
-def remove_submodule_d(path):
-    """Remove a submodule."""
-    print(f"Attempting to remove submodule: {path}")
-    try:
-        # Deinitialize the submodule if it's registered
-        deinit_result = subprocess.run(["git", "submodule", "deinit", "-f", path], capture_output=True, text=True)
-        if deinit_result.returncode != 0:
-            print(f"Warning: Could not deinitialize submodule '{path}': {deinit_result.stderr.strip()}")
-        
-        # Remove the submodule directory
-        if os.path.exists(path):
-            print(f"Removing directory for submodule: {path}")
-            shutil.rmtree(path, onerror=remove_readonly)
-        else:
-            print(f"Directory '{path}' does not exist, skipping.")
-
-        # Remove submodule metadata in .git/modules
-        git_modules_path = os.path.join(".git", "modules", path)
-        if os.path.exists(git_modules_path):
-            print(f"Removing .git/modules for submodule: {path}")
-            shutil.rmtree(git_modules_path, onerror=remove_readonly)
-        else:
-            print(f".git/modules path '{git_modules_path}' does not exist, skipping.")
-    except Exception as e:
-        print(f"Failed to remove submodule '{path}': {str(e)}")
-
+def handle_remove_readonly(func, path, exc_info):
+    """Handle read-only files during shutil.rmtree."""
+    os.chmod(path, 0o777)  # Change the file to writable
+    func(path)
+    
 def sync_submodules(config):
     """Sync submodules based on the configuration."""
     print("Syncing submodules...")
