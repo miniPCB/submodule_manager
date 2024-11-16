@@ -1,4 +1,0 @@
-[submodule "submodules/poems"]
-	path = submodules/poems
-	url = https://github.com/miniPCB/poems.git
-	branch = main
