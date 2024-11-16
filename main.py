@@ -3,8 +3,7 @@ import subprocess
 import requests
 import shutil
 import json
-
-from display import display_welcome, clear_screen
+from tqdm import tqdm  # For progress bar
 from submodule_functions import scan_existing_submodule_paths, remove_submodule, sync_submodules
 
 GITHUB_CONFIG_FILE = "config.json"
@@ -100,24 +99,31 @@ def toggle_repo_selection(repos, existing_repos):
         if choice.lower() == 'update':
             print("Updating repositories based on selection...")
             os.makedirs(SUBMODULE_DIRECTORY, exist_ok=True)
+            updated_submodules = []
 
-            for repo in repos:
+            for repo in tqdm(repos, desc="Processing repositories"):
                 repo_path = os.path.normpath(os.path.join(SUBMODULE_DIRECTORY, repo['name']))
                 if repo_status[repo['name']]:
                     try:
                         if not os.path.exists(repo_path):
-                            print(f"Adding submodule: {repo['name']}")
                             subprocess.run(["git", "submodule", "add", "-b", "main", repo['clone_url'], repo_path], check=True)
                         else:
-                            print(f"Submodule {repo['name']} already exists. Initializing...")
                             subprocess.run(["git", "submodule", "update", "--init", "--remote", repo_path], check=True)
                     except subprocess.CalledProcessError as e:
-                        print(f"Failed to add or initialize submodule '{repo['name']}': {e.stderr or str(e)}")
+                        tqdm.write(f"Failed to add or update submodule '{repo['name']}': {e.stderr or str(e)}")
                 else:
                     try:
                         remove_submodule(repo_path)
                     except Exception as e:
-                        print(f"Failed to remove submodule '{repo['name']}': {str(e)}")
+                        tqdm.write(f"Failed to remove submodule '{repo['name']}': {str(e)}")
+
+                if repo_status[repo['name']]:
+                    updated_submodules.append({
+                        "directory": repo['name'],
+                        "url": repo['clone_url'],
+                        "branch": "main"
+                    })
+                clear_screen()
 
             sync_existing_submodules()
             print("Update completed!")
@@ -137,17 +143,34 @@ def sync_existing_submodules():
     """Update all existing submodules and remove untracked ones."""
     print("Syncing all existing submodules...")
     try:
+        # Get the list of existing submodules from Git
         existing_submodules = scan_existing_submodule_paths()
 
-        for submodule_path in existing_submodules:
-            print(f"Updating submodule: {submodule_path}")
-            try:
-                subprocess.run(
-                    ["git", "submodule", "update", "--init", "--remote", submodule_path],
-                    check=True
-                )
-            except subprocess.CalledProcessError as e:
-                print(f"Failed to update submodule '{submodule_path}': {e.stderr or str(e)}")
+        # Get the desired submodules from .gitmodules
+        desired_submodules = {}
+        result = subprocess.run(["git", "config", "--file", ".gitmodules", "--get-regexp", "path"], capture_output=True, text=True)
+        if result.returncode == 0:
+            for line in result.stdout.strip().split("\n"):
+                key, path = line.split(maxsplit=1)
+                submodule_name = key.split(".")[1]  # Extract submodule name
+                desired_submodules[os.path.normpath(path)] = submodule_name
+
+        for submodule_path in tqdm(existing_submodules, desc="Syncing submodules"):
+            submodule_name = os.path.basename(submodule_path)  # Use directory name
+            if submodule_path in desired_submodules:
+                try:
+                    subprocess.run(
+                        ["git", "submodule", "update", "--init", "--remote", submodule_path],
+                        check=True
+                    )
+                except subprocess.CalledProcessError as e:
+                    tqdm.write(f"Failed to update submodule '{submodule_name}': {e.stderr or str(e)}")
+            else:
+                tqdm.write(f"Submodule '{submodule_name}' not listed in .gitmodules. Removing...")
+                try:
+                    remove_submodule(submodule_path)
+                except Exception as e:
+                    tqdm.write(f"Failed to remove submodule '{submodule_name}': {e}")
 
         print("All submodules are up to date.")
     except subprocess.CalledProcessError as e:
@@ -160,9 +183,11 @@ def main():
 
         if choice == "1":
             scan_and_update_submodules()
+            input("Press Enter to continue...")
 
         elif choice == "2":
             sync_existing_submodules()
+            input("Press Enter to continue...")
 
         elif choice == "3":
             print("Exiting... Goodbye!")

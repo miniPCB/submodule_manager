@@ -49,7 +49,7 @@ def add_or_update_submodule(path, url, branch="main"):
 
 def remove_submodule(path):
     """Remove a submodule and update .gitmodules."""
-    print(f"Attempting to remove submodule: {path}")
+    print(f" Attempting to remove submodule: {path}")
     try:
         # Normalize the path for consistent handling
         normalized_path = os.path.normpath(path)
