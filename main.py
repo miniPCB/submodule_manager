@@ -122,29 +122,6 @@ def sync_existing_submodules():
     except subprocess.CalledProcessError as e:
         print(f"Failed to sync submodules: {e.stderr or str(e)}")
 
-def remove_submodule(path):
-    """Remove a submodule and update .gitmodules."""
-    print(f"Attempting to remove submodule: {path}")
-    try:
-        # Deinitialize the submodule
-        subprocess.run(["git", "submodule", "deinit", "-f", path], check=True)
-        # Remove the submodule from the .gitmodules file
-        subprocess.run(["git", "rm", "-f", path], check=True)
-        # Ensure the .gitmodules file is updated
-        subprocess.run(["git", "add", ".gitmodules"], check=True)
-        subprocess.run(["git", "commit", "-m", f"Removed submodule {path}"], check=False)
-        # Remove the metadata from .git/config
-        subprocess.run(["git", "config", "--remove-section", f"submodule.{path}"], check=False)
-        # Clean up leftover paths
-        git_modules_path = os.path.join(".git", "modules", os.path.normpath(path))
-        if os.path.exists(git_modules_path):
-            shutil.rmtree(git_modules_path, ignore_errors=True)
-        if os.path.exists(path):
-            shutil.rmtree(path, ignore_errors=True)
-        print(f"Successfully removed submodule: {path}")
-    except Exception as e:
-        print(f"Failed to remove submodule '{path}': {e}")
-
 def main():
     """Main function to execute the script."""
     while True:

@@ -60,6 +60,29 @@ def remove_submodule(path):
         subprocess.run(["git", "submodule", "deinit", "-f", path], check=True)
         # Remove the submodule from the .gitmodules file
         subprocess.run(["git", "rm", "-f", path], check=True)
+        # Ensure the .gitmodules file is updated
+        subprocess.run(["git", "add", ".gitmodules"], check=True)
+        subprocess.run(["git", "commit", "-m", f"Removed submodule {path}"], check=False)
+        # Remove the metadata from .git/config
+        subprocess.run(["git", "config", "--remove-section", f"submodule.{path}"], check=False)
+        # Clean up leftover paths
+        git_modules_path = os.path.join(".git", "modules", os.path.normpath(path))
+        if os.path.exists(git_modules_path):
+            shutil.rmtree(git_modules_path, ignore_errors=True)
+        if os.path.exists(path):
+            shutil.rmtree(path, ignore_errors=True)
+        print(f"Successfully removed submodule: {path}")
+    except Exception as e:
+        print(f"Failed to remove submodule '{path}': {e}")
+
+def remove_submodule_a(path):
+    """Remove a submodule and update .gitmodules."""
+    print(f"Attempting to remove submodule: {path}")
+    try:
+        # Deinitialize the submodule
+        subprocess.run(["git", "submodule", "deinit", "-f", path], check=True)
+        # Remove the submodule from the .gitmodules file
+        subprocess.run(["git", "rm", "-f", path], check=True)
         # Remove the metadata from .git/config
         subprocess.run(["git", "config", "--remove-section", f"submodule.{path}"], check=False)
         # Clean up leftover paths
@@ -70,7 +93,7 @@ def remove_submodule(path):
     except Exception as e:
         print(f"Failed to remove submodule '{path}': {e}")
 
-def remove_submodule(path):
+def remove_submodule_b(path):
     """Remove a submodule and update .gitmodules."""
     print(f"Attempting to remove submodule: {path}")
     try:
@@ -90,7 +113,7 @@ def remove_submodule(path):
     except Exception as e:
         print(f"Failed to remove submodule '{path}': {e}")
 
-def remove_submodule_duplicate(path):
+def remove_submodule_c(path):
     """Remove a submodule and update .gitmodules."""
     print(f"Attempting to remove submodule: {path}")
     try:
@@ -108,7 +131,7 @@ def remove_submodule_duplicate(path):
     except Exception as e:
         print(f"Failed to remove submodule '{path}': {e}")
 
-def remove_submodule_old (path):
+def remove_submodule_d(path):
     """Remove a submodule."""
     print(f"Attempting to remove submodule: {path}")
     try:
