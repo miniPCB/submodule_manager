@@ -6,7 +6,7 @@ import shutil
 
 from display import display_welcome, clear_screen
 from config_scripts import load_config, save_config
-from submodule_functions import scan_existing_submodule_paths
+from submodule_functions import scan_existing_submodule_paths, remove_submodule, sync_submodules
 
 # Path to your JSON configuration file
 CONFIG_FILE = "submodules.json"
@@ -99,6 +99,7 @@ def toggle_repo_selection(repos, config):
 
             config["submodules"] = updated_submodules
             save_config(CONFIG_FILE, config)
+            sync_submodules(config)
             sync_existing_submodules()
             print("Update completed!")
             break
