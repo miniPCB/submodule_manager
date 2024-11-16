@@ -2,7 +2,7 @@ import os
 
 def clear_screen():
     """Clear the terminal screen."""
-    #os.system('cls' if os.name == 'nt' else 'clear')
+    os.system('cls' if os.name == 'nt' else 'clear')
 
 def display_welcome():
     """Display a welcome message and menu options."""
